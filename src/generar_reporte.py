@@ -2,6 +2,7 @@ import pandas as pd
 from pathlib import Path
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.chart import BarChart, Reference
 
 RUTA_ENTRADA = Path("entrada")
 RUTA_SALIDA = Path("salida")
@@ -52,6 +53,42 @@ def aplicar_formato_excel(ruta_archivo):
 
     libro.save(ruta_archivo)
 
+def agregar_graficos_excel(ruta_archivo):
+    from openpyxl import load_workbook
+
+    libro = load_workbook(ruta_archivo)
+
+    hoja_categoria = libro["Ventas por categoria"]
+
+    grafico_categoria = BarChart()
+    grafico_categoria.title = "Ventas por categoría"
+    grafico_categoria.y_axis.title = "Total vendido"
+    grafico_categoria.x_axis.title = "Categoría"
+
+    datos = Reference(hoja_categoria, min_col=2, min_row=1, max_row=hoja_categoria.max_row)
+    categorias = Reference(hoja_categoria, min_col=1, min_row=2, max_row=hoja_categoria.max_row)
+
+    grafico_categoria.add_data(datos, titles_from_data=True)
+    grafico_categoria.set_categories(categorias)
+
+    hoja_categoria.add_chart(grafico_categoria, "D2")
+
+    hoja_producto = libro["Ventas por producto"]
+
+    grafico_producto = BarChart()
+    grafico_producto.title = "Ventas por producto"
+    grafico_producto.y_axis.title = "Total vendido"
+    grafico_producto.x_axis.title = "Producto"
+
+    datos_producto = Reference(hoja_producto, min_col=2, min_row=1, max_row=hoja_producto.max_row)
+    productos = Reference(hoja_producto, min_col=1, min_row=2, max_row=hoja_producto.max_row)
+
+    grafico_producto.add_data(datos_producto, titles_from_data=True)
+    grafico_producto.set_categories(productos)
+
+    hoja_producto.add_chart(grafico_producto, "D2")
+
+    libro.save(ruta_archivo)
 
 def generar_reporte():
     RUTA_SALIDA.mkdir(exist_ok=True)
@@ -76,7 +113,7 @@ def generar_reporte():
         inventario_valorizado.to_excel(writer, sheet_name="Inventario valorizado", index=False)
 
     aplicar_formato_excel(ruta_reporte)
-
+    agregar_graficos_excel(ruta_reporte)
     print(f"Reporte generado correctamente: {ruta_reporte}")
 
 
