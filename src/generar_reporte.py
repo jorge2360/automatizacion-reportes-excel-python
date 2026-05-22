@@ -3,6 +3,7 @@ from pathlib import Path
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.chart import BarChart, Reference
+import matplotlib.pyplot as plt
 
 RUTA_ENTRADA = Path("entrada")
 RUTA_SALIDA = Path("salida")
@@ -113,6 +114,58 @@ def crear_resumen_ejecutivo(ventas, inventario):
 
     return resumen
 
+def generar_graficos_png(ventas_por_categoria, ventas_por_producto):
+    grafico_categoria = RUTA_SALIDA / "ventas_por_categoria.png"
+    grafico_producto = RUTA_SALIDA / "ventas_por_producto.png"
+
+    plt.figure(figsize=(8, 5))
+    plt.bar(ventas_por_categoria["categoria"], ventas_por_categoria["total"])
+    plt.title("Ventas por categoría")
+    plt.xlabel("Categoría")
+    plt.ylabel("Total vendido")
+    plt.tight_layout()
+    plt.savefig(grafico_categoria)
+    plt.close()
+
+    plt.figure(figsize=(8, 5))
+    plt.bar(ventas_por_producto["producto"], ventas_por_producto["total"])
+    plt.title("Ventas por producto")
+    plt.xlabel("Producto")
+    plt.ylabel("Total vendido")
+    plt.xticks(rotation=30, ha="right")
+    plt.tight_layout()
+    plt.savefig(grafico_producto)
+    plt.close()
+
+def generar_dashboard_resumen(ventas, inventario):
+    ruta_dashboard = RUTA_SALIDA / "dashboard_resumen.png"
+
+    total_ventas = ventas["total"].sum()
+    unidades_vendidas = ventas["cantidad"].sum()
+    productos_registrados = inventario["producto"].nunique()
+    valor_inventario = inventario["valor_inventario"].sum()
+
+    indicadores = [
+        ("Total ventas", f"Q {total_ventas:,.2f}"),
+        ("Unidades vendidas", f"{unidades_vendidas}"),
+        ("Productos", f"{productos_registrados}"),
+        ("Valor inventario", f"Q {valor_inventario:,.2f}"),
+    ]
+
+    plt.figure(figsize=(10, 5))
+    plt.axis("off")
+
+    for index, (titulo, valor) in enumerate(indicadores):
+        x = 0.05 + (index * 0.24)
+
+        plt.text(x, 0.65, titulo, fontsize=12, weight="bold")
+        plt.text(x, 0.45, valor, fontsize=16)
+
+    plt.title("Dashboard resumen empresarial", fontsize=18, weight="bold")
+    plt.tight_layout()
+    plt.savefig(ruta_dashboard)
+    plt.close()
+
 def generar_reporte():
     RUTA_SALIDA.mkdir(exist_ok=True)
 
@@ -124,6 +177,7 @@ def generar_reporte():
 
     ventas_por_categoria = ventas.groupby("categoria")["total"].sum().reset_index()
     ventas_por_producto = ventas.groupby("producto")["total"].sum().reset_index()
+    generar_graficos_png(ventas_por_categoria, ventas_por_producto)
     inventario_valorizado = inventario[["producto", "categoria", "stock", "valor_inventario"]]
     resumen_ejecutivo = crear_resumen_ejecutivo(ventas, inventario)
 
@@ -131,6 +185,7 @@ def generar_reporte():
 
     with pd.ExcelWriter(ruta_reporte, engine="openpyxl") as writer:
         resumen_ejecutivo.to_excel(writer, sheet_name="Resumen ejecutivo", index=False)
+        generar_dashboard_resumen(ventas, inventario)
         ventas.to_excel(writer, sheet_name="Ventas", index=False)
         inventario.to_excel(writer, sheet_name="Inventario", index=False)
         ventas_por_categoria.to_excel(writer, sheet_name="Ventas por categoria", index=False)
@@ -141,6 +196,6 @@ def generar_reporte():
     agregar_graficos_excel(ruta_reporte)
     print(f"Reporte generado correctamente: {ruta_reporte}")
 
-
+    # Generar gráficos en formato PNG
 if __name__ == "__main__":
     generar_reporte()
