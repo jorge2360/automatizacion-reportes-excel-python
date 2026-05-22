@@ -1,8 +1,57 @@
 import pandas as pd
 from pathlib import Path
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 
 RUTA_ENTRADA = Path("entrada")
 RUTA_SALIDA = Path("salida")
+
+
+def aplicar_formato_excel(ruta_archivo):
+    encabezado_fill = PatternFill("solid", fgColor="1F4E78")
+    encabezado_font = Font(color="FFFFFF", bold=True)
+    borde = Border(
+        left=Side(style="thin", color="D9E2F3"),
+        right=Side(style="thin", color="D9E2F3"),
+        top=Side(style="thin", color="D9E2F3"),
+        bottom=Side(style="thin", color="D9E2F3"),
+    )
+
+    from openpyxl import load_workbook
+
+    libro = load_workbook(ruta_archivo)
+
+    for hoja in libro.worksheets:
+        hoja.freeze_panes = "A2"
+
+        for celda in hoja[1]:
+            celda.fill = encabezado_fill
+            celda.font = encabezado_font
+            celda.alignment = Alignment(horizontal="center")
+            celda.border = borde
+
+        for fila in hoja.iter_rows(min_row=2):
+            for celda in fila:
+                celda.border = borde
+                celda.alignment = Alignment(vertical="center")
+
+        for columna in hoja.columns:
+            max_length = 0
+            letra_columna = get_column_letter(columna[0].column)
+
+            for celda in columna:
+                if celda.value:
+                    max_length = max(max_length, len(str(celda.value)))
+
+                if "precio" in str(hoja.cell(row=1, column=celda.column).value).lower() \
+                    or "total" in str(hoja.cell(row=1, column=celda.column).value).lower() \
+                    or "valor" in str(hoja.cell(row=1, column=celda.column).value).lower():
+                    celda.number_format = 'Q #,##0.00'
+
+            hoja.column_dimensions[letra_columna].width = max_length + 4
+
+    libro.save(ruta_archivo)
+
 
 def generar_reporte():
     RUTA_SALIDA.mkdir(exist_ok=True)
@@ -26,7 +75,10 @@ def generar_reporte():
         ventas_por_producto.to_excel(writer, sheet_name="Ventas por producto", index=False)
         inventario_valorizado.to_excel(writer, sheet_name="Inventario valorizado", index=False)
 
+    aplicar_formato_excel(ruta_reporte)
+
     print(f"Reporte generado correctamente: {ruta_reporte}")
+
 
 if __name__ == "__main__":
     generar_reporte()
