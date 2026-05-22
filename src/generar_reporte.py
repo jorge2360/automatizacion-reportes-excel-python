@@ -90,6 +90,29 @@ def agregar_graficos_excel(ruta_archivo):
 
     libro.save(ruta_archivo)
 
+def crear_resumen_ejecutivo(ventas, inventario):
+    total_ventas = ventas["total"].sum()
+    total_unidades_vendidas = ventas["cantidad"].sum()
+    total_productos = inventario["producto"].nunique()
+    valor_total_inventario = inventario["valor_inventario"].sum()
+
+    resumen = pd.DataFrame({
+        "Indicador": [
+            "Total de ventas",
+            "Unidades vendidas",
+            "Productos registrados",
+            "Valor total del inventario",
+        ],
+        "Valor": [
+            total_ventas,
+            total_unidades_vendidas,
+            total_productos,
+            valor_total_inventario,
+        ],
+    })
+
+    return resumen
+
 def generar_reporte():
     RUTA_SALIDA.mkdir(exist_ok=True)
 
@@ -102,10 +125,12 @@ def generar_reporte():
     ventas_por_categoria = ventas.groupby("categoria")["total"].sum().reset_index()
     ventas_por_producto = ventas.groupby("producto")["total"].sum().reset_index()
     inventario_valorizado = inventario[["producto", "categoria", "stock", "valor_inventario"]]
+    resumen_ejecutivo = crear_resumen_ejecutivo(ventas, inventario)
 
     ruta_reporte = RUTA_SALIDA / "reporte_empresarial.xlsx"
 
     with pd.ExcelWriter(ruta_reporte, engine="openpyxl") as writer:
+        resumen_ejecutivo.to_excel(writer, sheet_name="Resumen ejecutivo", index=False)
         ventas.to_excel(writer, sheet_name="Ventas", index=False)
         inventario.to_excel(writer, sheet_name="Inventario", index=False)
         ventas_por_categoria.to_excel(writer, sheet_name="Ventas por categoria", index=False)
